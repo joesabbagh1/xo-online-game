@@ -8,6 +8,9 @@
 
 void *handle_client(void *arg);
 
+int client1_socket = -1;
+int client2_socket = -1;
+
 int main(int argc, char *argv[])
 {
   int server_socket, client_socket, addr_len, *new_sock;
@@ -34,7 +37,7 @@ int main(int argc, char *argv[])
   }
 
   // Listen for incoming connections
-  listen(server_socket, 5);
+  listen(server_socket, 2);
   printf("Waiting for incoming connections...\n");
 
   // Accept incoming connections and create new threads for each client
@@ -43,6 +46,20 @@ int main(int argc, char *argv[])
     addr_len = sizeof(struct sockaddr_in);
     client_socket = accept(server_socket, (struct sockaddr *)&client_addr, (socklen_t *)&addr_len);
     printf("New client connected: %s:%d\n", inet_ntoa(client_addr.sin_addr), ntohs(client_addr.sin_port));
+    if (client1_socket == -1)
+    {
+      client1_socket = client_socket;
+    }
+    else if (client2_socket == -1)
+    {
+      client2_socket = client_socket;
+    }
+    else
+    {
+      printf("Maximum number of clients reached\n");
+      close(client_socket);
+      continue;
+    }
 
     new_sock = (int *)malloc(1);
     *new_sock = client_socket;
@@ -64,6 +81,25 @@ void *handle_client(void *arg)
   char buffer[1024] = {0};
   ssize_t num_bytes;
 
+  // Get the other client's socket
+  int other_socket = -1;
+  if (client_socket == client1_socket)
+  {
+    while (client2_socket == -1)
+    {
+      // wait until the second client connects
+    }
+    other_socket = client2_socket;
+  }
+  else
+  {
+    while (client1_socket == -1)
+    {
+      // wait until the first client connects
+    }
+    other_socket = client1_socket;
+  }
+
   // Read data from client
   while ((num_bytes = read(client_socket, buffer, sizeof(buffer))) > 0)
   {
@@ -72,11 +108,22 @@ void *handle_client(void *arg)
 
     // Send response back to client
     write(client_socket, "pio", 3);
+    // Send message to other client
+    printf("the other socket is: %d\n", other_socket);
+    write(other_socket, buffer, strlen(buffer));
 
     memset(buffer, 0, sizeof(buffer));
   }
 
   // Close socket and free memory
+  if (client_socket == client1_socket)
+  {
+    client1_socket = -1;
+  }
+  else
+  {
+    client2_socket = -1;
+  }
   close(client_socket);
   free(arg);
   pthread_exit(NULL);
