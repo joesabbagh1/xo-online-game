@@ -107,9 +107,11 @@ void *handle_client(void *arg)
     printf("Received %ld bytes: %s\n", num_bytes, buffer);
 
     // Send response back to client
-    write(client_socket, "pio", 3);
+    write(client_socket, "sent", 4);
+
     // Send message to other client
     printf("the other socket is: %d\n", other_socket);
+
     write(other_socket, buffer, strlen(buffer));
 
     memset(buffer, 0, sizeof(buffer));
